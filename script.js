@@ -1,41 +1,62 @@
-// Wait for the DOM to be fully loaded before executing code
 document.addEventListener('DOMContentLoaded', () => {
-    let board = null; // Initialize the chessboard
-    const game = new Chess(); // Create new Chess.js game instance
-    const moveHistory = document.getElementById('move-history'); // Get move history container
-    let moveCount = 1; // Initialize the move count
-    let userColor = 'w'; // Initialize the user's color as white
+    // Prevent default touch events to avoid scrolling
+    document.body.addEventListener('touchmove', (event) => {
+        event.preventDefault(); // Prevent scroll on touch
+    }, { passive: false }); // Set passive to false to allow preventDefault
 
-    // Function to make a random move for the computer
-    const makeRandomMove = () => {
-        const possibleMoves = game.moves();
+    let board = null;
+    const game = new Chess();
+    const moveHistory = document.getElementById('move-history');
+    let moveCount = 1;
+    let userColor = 'w';
+    
+    // Stockfish Web Worker (Single-threaded version)
+    const stockfish = new Worker('stockfish-16.1-single.js');
 
-        if (game.game_over()) {
-            alert("Checkmate!");
-        } else {
-            const randomIdx = Math.floor(Math.random() * possibleMoves.length);
-            const move = possibleMoves[randomIdx];
-            game.move(move);
-            board.position(game.fen());
-            recordMove(move, moveCount); // Record and display the move with move count
-            moveCount++; // Increament the move count
+    // Function to highlight squares
+    const highlightBestMove = (bestMove) => {
+        // Clear previous highlights
+        document.querySelectorAll('.highlight-square').forEach(square => {
+            square.classList.remove('highlight-square');
+        });
+
+        const from = bestMove.slice(0, 2); // Extract 'from' square
+        const to = bestMove.slice(2, 4);   // Extract 'to' square
+
+        // Highlight the piece and target square
+        document.querySelector(`[data-square='${from}']`).classList.add('highlight-square');
+        document.querySelector(`[data-square='${to}']`).classList.add('highlight-square');
+    };
+
+    // Function to request the best move from Stockfish
+    const getBestMove = () => {
+        stockfish.postMessage('position fen ' + game.fen());
+        stockfish.postMessage('go depth 15');
+    };
+
+    // Listen for Stockfish's response
+    stockfish.onmessage = function (event) {
+        const message = event.data;
+
+        // Parse the best move
+        if (message.startsWith('bestmove')) {
+            const bestMove = message.split(' ')[1];
+            highlightBestMove(bestMove); // Highlight the best move
         }
     };
 
-    // Function to record and display a move in the move history
-    const recordMove = (move, count) => {
-        const formattedMove = count % 2 === 1 ? `${Math.ceil(count / 2)}. ${move}` : `${move} -`;
-        moveHistory.textContent += formattedMove + ' ';
-        moveHistory.scrollTop = moveHistory.scrollHeight; // Auto-scroll to the latest move
-    };
-
-    // Function to handle the start of a drag position
+    // Function to handle the start of a drag
     const onDragStart = (source, piece) => {
-        // Allow the user to drag only their own pieces based on color
-        return !game.game_over() && piece.search(userColor) === 0;
+        if (game.game_over()) return false;
+
+        // Prevent black from moving during white's turn and vice versa
+        if (game.turn() === 'w' && piece.search(/^b/) !== -1) return false;
+        if (game.turn() === 'b' && piece.search(/^w/) !== -1) return false;
+
+        return true;
     };
 
-    // Function to handle a piece drop on the board
+    // Function to handle a piece drop
     const onDrop = (source, target) => {
         const move = game.move({
             from: source,
@@ -45,14 +66,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (move === null) return 'snapback';
 
-        window.setTimeout(makeRandomMove, 250);
-        recordMove(move.san, moveCount); // Record and display the move with move count
+        recordMove(move.san, moveCount);
         moveCount++;
+
+        // Get best move after white's turn
+        if (game.turn() === 'w') {
+            getBestMove();
+        }
     };
 
-    // Function to handle the end of a piece snap animation
+    // Function to handle when the piece snap animation finishes
     const onSnapEnd = () => {
         board.position(game.fen());
+    };
+
+    // Function to record and display a move in the move history
+    const recordMove = (move, count) => {
+        const formattedMove = count % 2 === 1 ? `${Math.ceil(count / 2)}. ${move}` : `${move} -`;
+        moveHistory.textContent += formattedMove + ' ';
+        moveHistory.scrollTop = moveHistory.scrollHeight;
     };
 
     // Configuration options for the chessboard
@@ -77,30 +109,24 @@ document.addEventListener('DOMContentLoaded', () => {
         board.start();
         moveHistory.textContent = '';
         moveCount = 1;
-        userColor = 'w';
+        clearHighlights();
     });
 
     // Event listener for the "Set Position" button
     document.querySelector('.set-pos').addEventListener('click', () => {
-        const fen = prompt("Enter the FEN notation for the desired position!");
-        if (fen !== null) {
-            if (game.load(fen)) {
-                board.position(fen);
-                moveHistory.textContent = '';
-                moveCount = 1;
-                userColor = 'w';
-            } else {
-                alert("Invalid FEN notation. Please try again.");
-            }
+        const fen = prompt('Enter the FEN notation for the desired position!');
+        if (fen !== null && game.load(fen)) {
+            board.position(fen);
+            moveHistory.textContent = '';
+            moveCount = 1;
+            clearHighlights();
+        } else {
+            alert('Invalid FEN notation. Please try again.');
         }
     });
 
-    // Event listener for the "Flip Board" button
     document.querySelector('.flip-board').addEventListener('click', () => {
         board.flip();
-        makeRandomMove();
-        // Toggle user's color after flipping the board
         userColor = userColor === 'w' ? 'b' : 'w';
     });
-
 });

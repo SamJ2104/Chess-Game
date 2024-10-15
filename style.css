@@ -1,67 +1,132 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
-*{
+* {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
     font-family: 'Poppins', sans-serif;
+    overflow: hidden;
 }
 
-body{
+body {
+    overflow: hidden;
     height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
     background-color: #f2f2f2;
+    padding: 10px;
 }
 
-.container{
+.container {
     background-color: #fff;
-    padding: 2rem;
+    padding: 1.5rem;
     border-radius: 10px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    max-width: 100%;
+    width: 100%;
 }
 
-h1{
+h1 {
     text-align: center;
     font-weight: 500;
+    font-size: 1.2rem;
 }
 
-.board{
-    width: 400px;
+.board {
+    width: 100%;
+    max-width: 350px; /* Adjust for mobile screen size */
     margin: 20px auto;
 }
 
-.buttons{
-    margin-top: 20px;
+.buttons {
+    margin-top: 15px;
     display: flex;
     justify-content: center;
     gap: 10px;
+    flex-wrap: wrap;
 }
 
-button{
+button {
     color: #fff;
     background-color: #000;
     border: none;
-    width: 120px;
-    height: 40px;
+    width: 100px;
+    height: 35px;
     border-radius: 6px;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     cursor: pointer;
     transition: all 0.3s ease;
 }
 
-button:hover{
+button:hover {
     background-color: #434343;
 }
 
-.move-history{
-    margin-top: 20px;
+.move-history {
+    margin: 15px auto; /* Centers horizontally */
     border: 1px solid #ccc;
     padding: 10px;
     border-radius: 5px;
-    height: 100px;
-    width: 400px;
+    height: 80px;
+    max-width: 350px;
+    width: 100%;
     overflow-y: scroll;
     background-color: #f2f2f2;
+    font-size: 0.9rem;
 }
+
+
+/* Highlight square */
+.highlight-square {
+    filter: brightness(0.9) !important;
+}
+
+
+
+/* Media queries for smaller devices */
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+        padding: 10px;
+    }
+
+    .container {
+        padding: 1rem;
+    }
+
+    .board {
+        max-width: 300px;
+    }
+
+    .move-history {
+        max-width: 300px;
+        height: 70px;
+    }
+
+    button {
+        width: 90px;
+        height: 35px;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    h1 {
+        font-size: 1rem;
+    }
+
+    .board {
+        max-width: 250px;
+    }
+
+    .move-history {
+        max-width: 250px;
+        height: 60px;
+    }
+
+    button {
+        width: 80px;
+        height: 30px;
+        font-size: 0.75rem;
+    }
