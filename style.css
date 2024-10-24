@@ -77,9 +77,10 @@ button:hover {
 }
 
 
-/* Highlight square */
+/* Highlight square with fade effect */
 .highlight-square {
-    filter: brightness(0.9) !important;
+    transition: filter 3s ease; /* Apply a smooth transition */
+    filter: brightness(0.9) !important; /* Darker brightness */
 }
 
 
