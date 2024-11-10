@@ -15,18 +15,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Function to highlight squares
     const highlightBestMove = (bestMove) => {
-        // Clear previous highlights
-        document.querySelectorAll('.highlight-square').forEach(square => {
-            square.classList.remove('highlight-square');
-        });
+    // Clear previous highlights with fade-out effect
+    document.querySelectorAll('.highlight-square').forEach(square => {
+        square.classList.add('highlight-square-fade'); // Start fade-out transition
+        setTimeout(() => square.classList.remove('highlight-square', 'highlight-square-fade'), 1500); // Remove classes after transition
+    });
 
-        const from = bestMove.slice(0, 2); // Extract 'from' square
-        const to = bestMove.slice(2, 4);   // Extract 'to' square
+    const from = bestMove.slice(0, 2);
+    const to = bestMove.slice(2, 4);
 
-        // Highlight the piece and target square
-        document.querySelector(`[data-square='${from}']`).classList.add('highlight-square');
-        document.querySelector(`[data-square='${to}']`).classList.add('highlight-square');
-    };
+    // Highlight the new squares
+    document.querySelector(`[data-square='${from}']`).classList.add('highlight-square');
+    document.querySelector(`[data-square='${to}']`).classList.add('highlight-square');
+};
 
     // Function to request the best move from Stockfish
     const getBestMove = () => {
