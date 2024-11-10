@@ -77,10 +77,15 @@ button:hover {
 }
 
 
-/* Highlight square with fade effect */
+/* Define initial highlight */
 .highlight-square {
-    transition: filter 3s ease; /* Apply a smooth transition */
-    filter: brightness(0.9) !important; /* Darker brightness */
+    filter: brightness(0.8); /* Darker brightness */
+    transition: filter 1.5s ease; /* Smooth transition for both in and out */
+}
+
+/* Fade-out class */
+.highlight-square-fade {
+    filter: brightness(1); /* Return to normal brightness */
 }
 
 
