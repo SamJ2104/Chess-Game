@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/chessboard-1.0.0.min.css">
+    <title>Multiplayer Chess</title>
+    <style>
+        /* Include your existing styles here */
+        .room-container {
+            margin-bottom: 20px;
+        }
+
+        .toggle-highlight {
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="room-container">
+        <label for="room-id">Room ID (3 letters):</label>
+        <input type="text" id="room-id" maxlength="3">
+        <button id="join-room">Join Room</button>
+        <label for="highlight-toggle" class="toggle-highlight">Highlight Best Moves:
+            <input type="checkbox" id="highlight-toggle" checked>
+        </label>
+    </div>
+    <div class="container">
+        <h1>Chess</h1>
+        <div class="board" id="board"></div>
+        <div class="buttons">
+            <button class="play-again">Play Again</button>
+        </div>
+        <div id="move-history" class="move-history"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="js/chessboard-1.0.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="/trystero-torrent.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const game = new Chess();
+            let moveCount = 1;
+            let userColor = 'w';
+            let board = null;
+            let room = null;
+            let highlightBestMoves = true;
+
+            // Initialize the chessboard
+            const boardConfig = {
+                showNotation: true,
+                draggable: true,
+                position: 'start',
+                onDragStart,
+                onDrop,
+                onSnapEnd,
+                moveSpeed: 'fast',
+                snapBackSpeed: 500,
+                snapSpeed: 100,
+            };
+            board = Chessboard('board', boardConfig);
+
+            // Trystero setup
+            const joinRoomButton = document.getElementById('join-room');
+            const roomIdInput = document.getElementById('room-id');
+            const highlightToggle = document.getElementById('highlight-toggle');
+
+            let selfId = null;
+
+            const [sendMove, getMove] = room?.makeAction('move');
+            const [sendChat, getChat] = room?.makeAction('chat');
+
+            // Join room handler
+            joinRoomButton.addEventListener('click', () => {
+                const roomId = roomIdInput.value.toUpperCase();
+                if (roomId.length === 3) {
+                    room = joinRoom({ appId: 'multiplayer_chess_game' }, roomId);
+                    selfId = room?.selfId;
+                    console.log(`Joined room ${roomId}`);
+                    setupTrysteroActions();
+                } else {
+                    alert('Room ID must be exactly 3 letters.');
+                }
+            });
+
+            // Setup Trystero actions after joining
+            function setupTrysteroActions() {
+                // Broadcast moves and handle incoming moves
+                getMove((move, peerId) => {
+                    game.move(move);
+                    board.position(game.fen());
+                    recordMove(move.san, moveCount);
+                    moveCount++;
+                    if (highlightBestMoves && game.turn() === 'w') {
+                        getBestMove();
+                    }
+                });
+
+                // Broadcast chat messages
+                getChat((message, peerId) => {
+                    console.log(`Received message: ${message}`);
+                    // Handle chat display if needed
+                });
+
+                // Handle player's move submission
+                boardConfig.onDrop = (source, target) => {
+                    const move = game.move({ from: source, to: target, promotion: 'q' });
+                    if (move === null) return 'snapback';
+
+                    recordMove(move.san, moveCount);
+                    moveCount++;
+
+                    sendMove(move.san); // Send move to other player
+
+                    if (game.turn() === 'w') {
+                        getBestMove();
+                    }
+                };
+            }
+
+            // Toggle best move highlighting
+            highlightToggle.addEventListener('change', (event) => {
+                highlightBestMoves = event.target.checked;
+            });
+
+            // Highlight the best move for white
+            const highlightBestMove = (bestMove) => {
+                if (!highlightBestMoves) return;
+
+                document.querySelectorAll('.highlight-square').forEach(square => {
+                    square.classList.add('highlight-square-fade');
+                    setTimeout(() => square.classList.remove('highlight-square', 'highlight-square-fade'), 1500);
+                });
+
+                const from = bestMove.slice(0, 2);
+                const to = bestMove.slice(2, 4);
+
+                document.querySelector(`[data-square='${from}']`).classList.add('highlight-square');
+                document.querySelector(`[data-square='${to}']`).classList.add('highlight-square');
+            };
+
+            // Request the best move from Stockfish
+            const stockfish = new Worker('stockfish-16.1-single.js');
+            stockfish.onmessage = (event) => {
+                const message = event.data;
+                if (message.startsWith('bestmove')) {
+                    const bestMove = message.split(' ')[1];
+                    highlightBestMove(bestMove);
+                }
+            };
+
+            const getBestMove = () => {
+                stockfish.postMessage('position fen ' + game.fen());
+                stockfish.postMessage('go depth 15');
+            };
+
+            // Record and display moves in the history
+            const moveHistory = document.getElementById('move-history');
+            const recordMove = (move, count) => {
+                const formattedMove = count % 2 === 1 ? `${Math.ceil(count / 2)}. ${move}` : `${move} -`;
+                moveHistory.textContent += formattedMove + ' ';
+                moveHistory.scrollTop = moveHistory.scrollHeight;
+            };
+
+            // Event listener for "Play Again" button
+            document.querySelector('.play-again').addEventListener('click', () => {
+                game.reset();
+                board.start();
+                moveHistory.textContent = '';
+                moveCount = 1;
+                clearHighlights();
+            });
+
+            function clearHighlights() {
+                document.querySelectorAll('.highlight-square').forEach(square => {
+                    square.classList.remove('highlight-square');
+                });
+            }
+
+            // Function to handle the start of a drag
+            const onDragStart = (source, piece) => {
+                if (game.game_over()) return false;
+
+                if (game.turn() === 'w' && piece.search(/^b/) !== -1) return false;
+                if (game.turn() === 'b' && piece.search(/^w/) !== -1) return false;
+
+                return true;
+            };
+        });
+    </script>
+</body>
+</html>
