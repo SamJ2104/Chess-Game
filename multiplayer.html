@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="css/chessboard-1.0.0.min.css">
     <title>Multiplayer Chess</title>
     <style>
+        body{
+            overflow:hidden
+        }
         /* Include your existing styles here */
         .room-container {
             margin-bottom: 20px;
@@ -22,7 +25,6 @@
 </head>
 <body>
     <div class="room-container">
-        <label for="room-id">Room ID (3 letters):</label>
         <input type="text" id="room-id" maxlength="3">
         <button id="join-room">Join Room</button>
     </div>
